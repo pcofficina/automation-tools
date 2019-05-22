@@ -2,41 +2,20 @@
 
 # PCOfficina AutoTools
 # Sistema di automazione per check-up macchine
-# https://github.com/
-#
-# The MIT License (MIT)
-#
-# Copyright (c) 2019 PCOfficina
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
+# https://github.com/pcofficina
 
 #
 # Variabili d'ambiente
 #
 
-cmdline=./fake_cl	# /proc/cmdline File argomenti riga di comando GRUB
-version="0.3"	# Versione dello script
+### TODO: prendere le variabili dalla riga di comando 
 
-$(cat $cmdline | grep "REMOTE_IP")	# IP del boot server
-$(cat $cmdline | grep "WORK_NAME")	# Nome della lavorazione
+version="0.5"	# Versione dello script
+deps=(inxi smartmontools)	# Dipendenze dello script
+disks=(/dev/sd?) # Dischi della macchina
 
-WORK_NAME="pco-001"
+
+WORK_NAME="pco-7357"
 
 #
 # Utilita'
@@ -67,7 +46,16 @@ function attn {
 #
 
 clear
-echo -e "PCOfficina AutoTools $version\t\tRilasciato sotto licenza MIT\n"
+echo -e "PCOfficina AutoTools $version\t\tRilasciato sotto licenza XYZ"
+echo -e "Bash versione ${BASH_VERSION}\n"
+
+if [[ $UID != 0 ]]; then
+    warn "Lo script deve essere eseguito con sudo!"
+    info "Provo a rieseguire lo script con sudo..."
+	sudo $0 $*
+    exit 1
+fi
+
 info "Inizio lavorazione:\t$(date)"
 
 info "Codice macchina:\t$WORK_NAME"
@@ -80,12 +68,15 @@ if [ -z "$(ping -c 1 www.google.com | grep "1 rec")" ]; then
 	exit
 fi
 
-# Installa 'inxi' se non e' disponibile
-if [ -z $(which inxi) ]; then
-	echo
-	warn "Mi serve inxi..." >&2
-	apt-get install inxi > /dev/null
-fi
+# Installa le dipendenze
+for dep in "${deps[@]}"
+do 
+	if [ -z $(which $dep) ]; then
+		echo
+		warn "Mi serve $dep..." >&2
+		apt-get install $dep #> /dev/null #DEBUG
+	fi
+done
 
 # Installa 'smartmontools' se non e' disponibile
 if [ -z $(which smartctl) ]; then
@@ -102,9 +93,11 @@ inxi -short
 # Controlla i parametri SMART dei dischi
 echo
 info "Parametri SMART:\n"
-declare -a disk_ary
-disk_ary+=(/dev/sd?)
-sudo smartctl --attributes /dev/sda | grep -Ei 'reallocated_s|power_cyc' | awk '{print $2 " " $10}'
+for disk in "${disks[@]}"
+do 
+	# TODO: Stabilire se sto passando su una chiavetta!
+	smartctl --attributes $disk | grep -Ei 'reallocated_s|power_cyc' | awk '{print $2 " " $10}'
+done
 
 # Esegue badblocks
 echo
