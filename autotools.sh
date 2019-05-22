@@ -10,10 +10,9 @@
 
 ### TODO: prendere le variabili dalla riga di comando 
 
-version="0.5"	# Versione dello script
+version="0.51"	# Versione dello script
 deps=(inxi smartmontools)	# Dipendenze dello script
 disks=(/dev/sd?) # Dischi della macchina
-
 
 WORK_NAME="pco-7357"
 
@@ -49,10 +48,10 @@ clear
 echo -e "PCOfficina AutoTools $version\t\tRilasciato sotto licenza XYZ"
 echo -e "Bash versione ${BASH_VERSION}\n"
 
+
 if [[ $UID != 0 ]]; then
-    warn "Lo script deve essere eseguito con sudo!"
-    info "Provo a rieseguire lo script con sudo..."
-	sudo $0 $*
+	# TODO: Auto-sudo
+    crit "Lo script deve essere eseguito con sudo!"
     exit 1
 fi
 
@@ -74,21 +73,14 @@ do
 	if [ -z $(which $dep) ]; then
 		echo
 		warn "Mi serve $dep..." >&2
-		apt-get install $dep #> /dev/null #DEBUG
+		apt-get --yes --force-yes install $dep > /dev/null
 	fi
 done
-
-# Installa 'smartmontools' se non e' disponibile
-if [ -z $(which smartctl) ]; then
-	echo
-	warn "Mi serve smartmontools..." >&2
-	apt-get install smartmontools > /dev/null
-fi	
 
 # Stampa la configurazione di sistema
 echo
 info "Configurazione hardware:\n"
-inxi -short
+inxi -ABCdMn
 
 # Controlla i parametri SMART dei dischi
 echo
